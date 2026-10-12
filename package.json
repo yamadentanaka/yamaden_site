@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "lint": "eslint .",
+    "lint": "astro sync && eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "astro check"

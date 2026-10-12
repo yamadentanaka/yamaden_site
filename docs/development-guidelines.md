@@ -54,13 +54,15 @@ pnpm build && find dist/_astro -name '*.js' -exec sh -c 'gzip -c "$1" | wc -c' _
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "lint": "eslint .",
+    "lint": "astro sync && eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "astro check"
   }
 }
 ```
+
+- `pnpm lint` は、先に `astro sync` で Astro の型（`.astro/types.d.ts`。Git の管理外）を生成する。生成しないと、clone した直後や CI で `astro:content` と `import.meta.env` の型が解決できず、型情報を使う lint が失敗する
 
 ### 設定ファイルの決め事
 
