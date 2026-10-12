@@ -1,0 +1,30 @@
+---
+import { getCollection } from "astro:content";
+import ToolCard from "../../components/ToolCard.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+const tools = (await getCollection("tools"))
+  .map((entry) => ({ slug: entry.id, ...entry.data }))
+  .sort((a, b) => a.order - b.order || compareText(a.slug, b.slug));
+---
+
+<BaseLayout
+  title="ツール"
+  description="仕事でよく使う処理を、ブラウザだけで動くツールとして公開しています。"
+>
+  <div class="container">
+    <h1>ツール</h1>
+    <p>
+      ブラウザだけで動くツールです。読み込んだファイルは外部に送信しません。
+    </p>
+    <ul class="tool-list">
+      {tools.map((tool) => (
+        <li>
+          <ToolCard tool={tool} />
+        </li>
+      ))}
+    </ul>
+  </div>
+</BaseLayout>

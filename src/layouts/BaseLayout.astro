@@ -1,0 +1,50 @@
+---
+import "../styles/global.css";
+import { withBase } from "../routing/withBase";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const COMPANY_NAME = "有限会社山田田中商店";
+const { title, description } = Astro.props;
+const pageTitle = title ? `${title} | ${COMPANY_NAME}` : COMPANY_NAME;
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="icon" type="image/svg+xml" href={withBase("favicon.svg")} />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-header__name" href={withBase("")}>
+          {COMPANY_NAME}
+        </a>
+        <nav class="site-nav" aria-label="サイト内">
+          <ul>
+            <li>
+              <a href={withBase("")}>トップ</a>
+            </li>
+            <li>
+              <a href={withBase("tools/")}>ツール</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main class="site-main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      © {year} {COMPANY_NAME}
+    </footer>
+  </body>
+</html>

@@ -54,7 +54,7 @@ pnpm build && find dist/_astro -name '*.js' -exec sh -c 'gzip -c "$1" | wc -c' _
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "lint": "eslint .",
+    "lint": "astro sync && eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "astro check"
@@ -62,19 +62,21 @@ pnpm build && find dist/_astro -name '*.js' -exec sh -c 'gzip -c "$1" | wc -c' _
 }
 ```
 
+- `pnpm lint` は、先に `astro sync` で Astro の型（`.astro/types.d.ts`。Git の管理外）を生成する。生成しないと、clone した直後や CI で `astro:content` と `import.meta.env` の型が解決できず、型情報を使う lint が失敗する
+
 ### 設定ファイルの決め事
 
 | ファイル | 決め事 |
 |---|---|
-| `astro.config.mjs` | `site: "https://yamadentanaka.github.io"`、`base: "/yamaden_site/"`、`trailingSlash: "always"`、`integrations: [preact()]`。`security.csp` は `directives` に [architecture.md](architecture.md) の「CSP」の7つだけを書く（`script-src`・`style-src` は書かない。書くとビルドが設定エラーで止まる） |
+| `astro.config.mjs` | `site: "https://yamadentanaka.github.io"`、`base: "/yamaden_site/"`、`trailingSlash: "always"`、`integrations: [preact()]`、`markdown: { syntaxHighlight: "prism" }`（Markdown のコードの色付けの既定の Shiki はインラインスタイルを使い、CSP と両立しないため）。`security.csp` は `directives` に [architecture.md](architecture.md) の「CSP」の7つだけを書く（`script-src`・`style-src` は書かない。書くとビルドが設定エラーで止まる） |
 | `tsconfig.json` | `{ "extends": "astro/tsconfigs/strictest", "include": [".astro/types.d.ts", "**/*"], "exclude": ["dist"], "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "preact", "types": ["node"] } }`。`.ts` の設定ファイル（`vitest.config.ts`・`playwright.config.ts`）もこの tsconfig に入る |
 | `vitest.config.ts` | `test.include: ["src/**/*.test.ts"]`、`test.environment: "node"`、`test.passWithNoTests: true`。`coverage.provider: "v8"`、`coverage.include: ["src/tools/*/{domain,application}/**/*.ts"]`、`coverage.exclude: ["**/*.test.ts"]`、`coverage.thresholds: { lines: 90 }` |
-| `playwright.config.ts` | `testDir: "tests/e2e"`、`projects` は chromium だけ。`webServer: { command: "pnpm build && pnpm preview", url: "http://localhost:4321/yamaden_site/", reuseExistingServer: !process.env.CI }`、`use.baseURL: "http://localhost:4321/yamaden_site/"`。テストの中のページ移動は `page.goto("./tools/")` のように、先頭に `/` を付けない相対パスで書く |
+| `playwright.config.ts` | `testDir: "tests/e2e"`、`projects` は chromium だけ。`webServer: { command: process.env["CI"] ? "pnpm preview --ignore-lock" : "pnpm build && pnpm preview --ignore-lock",（CI では前の手順でビルド済みなので配信だけ） url: "http://localhost:4321/yamaden_site/", reuseExistingServer: !process.env["CI"], timeout: 180_000 }`、`use.baseURL: "http://localhost:4321/yamaden_site/"`、CI では `forbidOnly` と `reporter: "github"`。`--ignore-lock` を付けるのは、Astro 7 が AI エージェント（Claude Code など）の中での `astro preview` を自動でバックグラウンドにし、Playwright がサーバーの終了と判断してしまうため（CI では影響しない）。テストの中のページ移動は `page.goto("./tools/")` のように、先頭に `/` を付けない相対パスで書く |
 | `eslint.config.js` | `globalIgnores(["dist/", ".astro/", "coverage/", "test-results/", "playwright-report/", "tmp/", ".steering/", "reviews/"])`。typescript-eslint の `recommendedTypeChecked` は `**/*.{ts,tsx}` に当て、`parserOptions: { projectService: true }` にする（`.ts` は全て tsconfig に入るので `allowDefaultProject` は使わない）。`.astro` と `.js`・`.mjs` には、eslint-plugin-astro の `recommended` と typescript-eslint の型情報を使わない `recommended` を当てる。依存のルールは下の「依存のルールの確認」 |
 | `.prettierrc` | `{ "plugins": ["prettier-plugin-astro"] }` だけを書き、他は既定の設定 |
-| `.prettierignore` | `docs/`、`.claude/`、`.github/agents/`、`.github/prompts/`、`.github/skills/`、`.github/copilot-instructions.md`、`AGENTS.md`、`CLAUDE.md`、`prompt.md`、`pnpm-lock.yaml`。ドキュメントとエージェントの設定は Prettier で整形しない（表の書き方などが変わるため） |
+| `.prettierignore` | `docs/`、`.claude/`、`.github/agents/`、`.github/prompts/`、`.github/skills/`、`.github/copilot-instructions.md`、`AGENTS.md`、`CLAUDE.md`、`prompt.md`、`pnpm-lock.yaml`、`tests/fixtures/`。ドキュメントとエージェントの設定は Prettier で整形しない（表の書き方などが変わるため）。テスト用のファイルは、ツールの出力と1文字も違わないことを確かめるので整形しない |
 | `mise.toml` | `[tools]` に `node = "24"`、`pnpm = "12.11.2"`。pnpm のバージョンは `package.json` の `packageManager` と同じにする |
-| `pnpm-workspace.yaml` | 依存のビルドスクリプトは既定で止める。許可する依存は、このファイルに直接列挙する（キー名は pnpm 12 のドキュメントで確認する。pnpm 10 では `onlyBuiltDependencies`）。対話式の `pnpm approve-builds` は使わない。許可しなかった依存は、理由をコメントで残す |
+| `pnpm-workspace.yaml` | 依存のビルドスクリプトは既定で止める。許可する依存は、pnpm 12 の `allowBuilds` に `<パッケージ名>: true` で書く（2026-10-12 の初期化の時点では、許可が必要な依存はなく `allowBuilds: {}`。`node_modules/.modules.yaml` の `pendingBuilds` で確かめられる）。対話式の `pnpm approve-builds` は使わない。許可しなかった依存は、理由をコメントで残す |
 
 ## コーディング規約
 
@@ -115,7 +117,7 @@ const toolLayerConfigs = tools.flatMap((slug) =>
     files: [`src/tools/${slug}/${layer}/**/*.{ts,tsx}`],
     rules: {
       "@typescript-eslint/no-restricted-imports": ["error", { patterns: [
-        { group: [...layerBans[layer], ...tools.filter((t) => t !== slug).map((t) => `**/tools/${t}/**`)] },
+        { group: [...layerBans[layer], ...tools.filter((t) => t !== slug).map((t) => `**/${t}/**`)] },
         ...extraImportPatterns[layer], // 下の表の「外部パッケージ」「型だけ」
       ] }],
       "no-restricted-globals": ["error", ...restrictedGlobals[layer]],
@@ -129,13 +131,14 @@ const toolLayerConfigs = tools.flatMap((slug) =>
 
 | レイヤー | `@typescript-eslint/no-restricted-imports` | `no-restricted-globals` | `no-restricted-properties` / `no-restricted-syntax` |
 |---|---|---|---|
-| `ui/` | 他のツール | `fetch`・`XMLHttpRequest`・`WebSocket`・`EventSource` | `navigator.sendBeacon`、`window`・`globalThis` の `fetch`・`XMLHttpRequest`・`WebSocket` |
-| `application/` | `**/ui/**`・`**/infrastructure/**`、他のツール、外部パッケージ（`regex: "^(?!\\.\|vitest$)"`。相対パスとテストの `vitest` 以外の全て） | `ui/` の通信の4つに加えて、`window`・`document`・`navigator`・`File`・`Blob`・`URL`・`Image`・`crypto`・`performance`・`setTimeout`・`setInterval`・`localStorage`・`sessionStorage` | `ui/` と同じものに加えて、`Date.now`・`Math.random`。`no-restricted-syntax` で `NewExpression[callee.name='Date']` |
+| `ui/` | 他のツール | `fetch`・`XMLHttpRequest`・`WebSocket`・`EventSource` | `navigator.sendBeacon`、`window`・`globalThis`・`self` の `fetch`・`XMLHttpRequest`・`WebSocket`・`EventSource` |
+| `application/` | `**/ui/**`・`**/infrastructure/**`、他のツール、外部パッケージ（`regex: "^(?!\\.\|vitest$)"`。相対パスとテストの `vitest` 以外の全て） | `ui/` の通信の4つに加えて、`window`・`document`・`navigator`・`File`・`Blob`・`URL`・`Image`・`crypto`・`performance`・`setTimeout`・`setInterval`・`localStorage`・`sessionStorage`・`globalThis`・`self` | `ui/` と同じものに加えて、`Date.now`・`Math.random`。`no-restricted-syntax` で `NewExpression[callee.name='Date']` |
 | `infrastructure/` | `**/ui/**`・`**/application/**`、他のツール、外部パッケージ（同じ regex）。`**/domain/**` は `allowTypeImports: true` で型だけを許す | `ui/` と同じ | `ui/` と同じ |
 | `domain/` | `**/ui/**`・`**/application/**`・`**/infrastructure/**`、他のツール、外部パッケージ（同じ regex） | `application/` と同じ | `application/` と同じ |
 
 - 表の中の regex は、表の書式の都合で `|` を `\|` と書いている。設定ファイルには `"^(?!\\.|vitest$)"` と書く
-- `src/tools/shared/[レイヤー名]/` も同じレイヤーの禁止を当て、加えて全てのツール（`**/tools/<slug>/**`）を禁止する
+- 「他のツール」のパターンは `**/<slug>/**` と書く（ツール間の import は `../../<slug>/...` の相対パスになり、`tools/` を含まないため）
+- `src/tools/shared/[レイヤー名]/` も同じレイヤーの禁止を当て、加えて全てのツール（`**/<slug>/**`）を禁止する
 - ツールから `shared/` への依存は、上のレイヤーのパターン（`**/ui/**` など）がそのまま `shared/` の上位のレイヤーも止めるので、許可のために別のパターンは書かない
 
 **サイトの禁止**:
@@ -145,7 +148,7 @@ const toolLayerConfigs = tools.flatMap((slug) =>
 | `src/pages/**` | `**/tools/*/application/**`・`**/tools/*/domain/**`・`**/tools/*/infrastructure/**` |
 | `src/layouts/**` | `**/tools/**`・`**/pages/**`・`astro:content` |
 | `src/components/**` | `**/tools/**`・`**/pages/**`・`**/layouts/**`。`astro:content` は `allowTypeImports: true` で型だけを許す |
-| `src/routing/**` | 相対パスの import と、外部パッケージ（全て） |
+| `src/routing/**` | 同じディレクトリ（`./`）とテストの `vitest` 以外の全て（`regex: "^(?!\\./\|vitest$)"`） |
 | `src/content.config.ts` | `astro:content`・`astro/loaders`・`astro/zod` 以外の全て |
 | `src/content/**/*.test.ts` | `node:fs/promises`・`node:path`・`yaml`・`vitest` 以外の全て |
 | `tests/**` | `**/src/**` |
@@ -179,7 +182,7 @@ const toolLayerConfigs = tools.flatMap((slug) =>
 
 | 種類 | 対象 | 配置 |
 |---|---|---|
-| ユニットテスト | 各ツールのドメインレイヤーとアプリケーションレイヤー、サイトコンテンツの id の一意性 | 対象と同じディレクトリに `*.test.ts`（コンテンツは `src/content/content.test.ts`） |
+| ユニットテスト | 各ツールのドメインレイヤーとアプリケーションレイヤー、サイトコンテンツの id の一意性と id・slug の形式、`src/routing/` | 対象と同じディレクトリに `*.test.ts`（コンテンツは `src/content/content.test.ts`） |
 | 統合テスト | エリア定義JSONの往復など、ドメインとアプリケーションの組み合わせ | 上位の層のディレクトリに `*.integration.test.ts` |
 | E2E テスト | 画面の操作、ファイルの読み込みとダウンロード、外部への通信がないこと、全ページで CSP の違反がないこと、ページ間の移動 | `tests/e2e/*.spec.ts` |
 
@@ -233,7 +236,8 @@ pnpm add -DE typescript@6.0.3 @astrojs/check@0.9.10 @types/node@24.19.2 vitest@5
 pnpm exec playwright install chromium
 ```
 
-- `pnpm add` の出力で、ビルドスクリプトを止められた依存を確かめ、許可するものを `pnpm-workspace.yaml` に書く（「設定ファイルの決め事」）
+- ビルドスクリプトを止められた依存を `node_modules/.modules.yaml` の `pendingBuilds` で確かめ、許可するものを `pnpm-workspace.yaml` の `allowBuilds` に書く（「設定ファイルの決め事」）
+- コマンドは、シェルで mise を有効にしていなければ `mise exec -- pnpm <コマンド>` で実行できる
 - 続けて、「設定ファイルの決め事」の設定ファイルを作る
 - `package.json`・`pnpm-lock.yaml`・`pnpm-workspace.yaml`・`mise.toml`・設定ファイルを全てコミットし、PR で `main` にマージする
 - マージした後、Settings → Pages の Source を「GitHub Actions」にして、`main` のブランチの保護（[architecture.md](architecture.md) の「公開」）を設定する

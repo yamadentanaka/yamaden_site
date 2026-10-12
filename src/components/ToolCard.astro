@@ -1,0 +1,14 @@
+---
+import { withBase } from "../routing/withBase";
+
+interface Props {
+  tool: { slug: string; name: string; description: string };
+}
+
+const { tool } = Astro.props;
+---
+
+<a class="tool-card" href={withBase(`tools/${tool.slug}/`)}>
+  <h2 class="tool-card__name">{tool.name}</h2>
+  <p class="tool-card__description">{tool.description}</p>
+</a>

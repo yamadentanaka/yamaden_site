@@ -1,0 +1,13 @@
+# ドキュメントとエージェントの設定は Prettier で整形しない（表の書き方などが変わるため）
+docs/
+.claude/
+.github/agents/
+.github/prompts/
+.github/skills/
+.github/copilot-instructions.md
+AGENTS.md
+CLAUDE.md
+prompt.md
+pnpm-lock.yaml
+# テスト用のファイルはツールの出力と完全に一致させるので整形しない
+tests/fixtures/

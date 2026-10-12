@@ -1,0 +1,27 @@
+# 実績。載せる範囲は PRD の未決事項（公開前に代表が確認する）
+- id: jsai2026-paper-support
+  year: 2026
+  title: 人工知能学会への論文投稿に向けた実験を支援
+  description: 生成AIが、紙の折れや欠けで一部が見えない文字をどう補って出力するかを検証した
+- id: ieee2025-paper-support
+  year: 2025
+  title: IEEEへの論文投稿に向けた実験を支援
+  description: 生成AIに渡す画像の傾きや歪みが、結果にどの程度影響するかを数値で検証した
+- id: nvidia-ai-summit-2024
+  year: 2024
+  order: 1
+  title: NVIDIA AI Summit Japan 2024 デモ展示・講演サポート
+  description: 講演の中心となるリアルタイムマルチカメラトラッキングシステムと、デモブース用アプリを開発した
+- id: jsai2024-demo
+  year: 2024
+  order: 2
+  title: JSAI2024（人工知能学会全国大会）デモ出展
+  description: カメラ2台での人の検出と姿勢推定から、実店舗でのレコメンドを体験できるデモを開発した
+- id: jsai2023-demo
+  year: 2023
+  title: JSAI2023（人工知能学会全国大会）デモ出展
+  description: 骨格の情報を3次元に変換し、棚のどこに手を伸ばしたかを検出するデモを開発した
+- id: drone-ai-iot-lecture-2017
+  year: 2017
+  title: 「ドローンと画像認識によるAI×IoT講座」講師
+  description: 小型ドローンで撮影した画像を画像認識する講座の資料とプログラムを作成し、約50名に教えた

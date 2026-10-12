@@ -1,0 +1,3 @@
+# 依存のビルドスクリプトは既定で止める。許可する依存は allowBuilds に `<パッケージ名>: true` で書く（pnpm 12 のキー）。
+# 2026-10-12 の初期化の時点では、ビルドスクリプトを必要とする依存はなかった（node_modules/.modules.yaml の pendingBuilds が空）。
+allowBuilds: {}

@@ -1,0 +1,19 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { PolygonAreaEditor } from "../../tools/polygon-area/ui/PolygonAreaEditor";
+---
+
+<BaseLayout
+  title="ポリゴンエリア定義ツール"
+  description="画像にポリゴンで判定エリアを描き、ピクセル座標のJSONとして保存します。画像は外部に送信しません。"
+>
+  <!-- 画面の高さをツールに使うため、見出しは画面には出さず、支援技術向けに置く -->
+  <h1 class="visually-hidden">ポリゴンエリア定義ツール</h1>
+  <noscript>
+    <p class="container">
+      このツールは JavaScript で動きます。ブラウザの JavaScript
+      を有効にしてください。
+    </p>
+  </noscript>
+  <PolygonAreaEditor client:only="preact" />
+</BaseLayout>

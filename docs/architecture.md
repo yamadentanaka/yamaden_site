@@ -45,10 +45,11 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 
 | 技術 | バージョン | 用途 | 選定理由 |
 |------|-----------|------|----------|
-| actions/checkout | v7.0.1 | リポジトリの取得 | GitHub 公式 |
-| jdx/mise-action | v5.1.1 | CI での Node.js と pnpm の導入 | `mise.toml` を読むので、手元と同じバージョンになる |
-| withastro/action | v6.1.3 | GitHub Pages 用のビルド | Astro 公式のアクション。`packageManager` から pnpm のバージョンを取り、Node.js は既定で 24 を使う |
-| actions/deploy-pages | v5.0.1 | GitHub Pages への公開 | GitHub 公式 |
+| actions/checkout | v7.0.1（`3d3c42e`） | リポジトリの取得 | GitHub 公式 |
+| jdx/mise-action | v5.1.1（`2d8d4ca`） | CI での Node.js と pnpm の導入 | `mise.toml` を読むので、手元と同じバージョンになる |
+| withastro/action | v6.1.3（`3eafd00`） | GitHub Pages 用のビルド | Astro 公式のアクション。`packageManager` から pnpm のバージョンを取り、Node.js は既定で 24 を使う |
+| actions/deploy-pages | v5.0.1（`368f825`） | GitHub Pages への公開 | GitHub 公式 |
+| Dependabot | - | GitHub Actions の更新 | Actions をコミットの SHA で固定しているので、更新の PR を自動で作らせる（`.github/dependabot.yml`、毎週） |
 
 ## アーキテクチャパターン
 
@@ -96,7 +97,7 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 
 #### インフラレイヤー
 - **責務**: PCのファイルの読み込み、ファイルの保存（ダウンロード）、ローカルURLの作成と解放
-- **許可される操作**: ブラウザのAPI（`File`、`Blob`、`URL.createObjectURL`、`HTMLImageElement`、`performance.mark`）、ドメインレイヤーの型の参照
+- **許可される操作**: ブラウザのAPI（`File`、`Blob`、`URL.createObjectURL`・`URL.revokeObjectURL`、`HTMLImageElement`（`Image`）、`document.createElement("a")` によるダウンロード、`setTimeout`、`performance.mark`）、ドメインレイヤーの型の参照
 - **禁止される操作**: ネットワーク通信（`fetch`、`XMLHttpRequest`、`WebSocket` など）、アプリケーションレイヤー・UIレイヤーへの依存、ドメインレイヤーの関数の呼び出し（型の参照だけにする）
 
 #### ドメインレイヤー
@@ -117,8 +118,8 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 | 技術メモ（P2） | リポジトリ内のファイル（コンテンツコレクション、`glob()` ローダー） | Markdown | Markdown で書いて置くだけで公開できる |
 | エリア定義 | 利用者のPC（エリア定義JSONのダウンロード） | JSON（`AreaDefinitionFile`） | 画像を外に出さないため、サーバーにもブラウザのストレージにも保存しない |
 
-- コンテンツコレクションのスキーマは `astro/zod` で `src/content.config.ts` に書き、[functional-design.md](functional-design.md) のデータモデルの制約と一致させる。1件ごとの制約を満たさないデータがあると、ビルドが失敗する
-- id の一意性のように複数件にまたがる制約は、スキーマでは確かめられないので、YAML を直接読むユニットテスト（`src/content/content.test.ts`）で確かめる。`file()` ローダーは id が重複しても警告を出して後のデータで上書きするだけなので、このテストが必要
+- コンテンツコレクションのスキーマは `astro/zod` で `src/content.config.ts` に書き、[functional-design.md](functional-design.md) のデータモデルの制約と一致させる。スキーマで確かめられる1件ごとの制約（文字数、年・日付の形式と実在する日付、`order` など）を満たさないデータがあると、ビルドが失敗する
+- id の一意性のように複数件にまたがる制約と、id・slug の形式（`file()` ローダーの id と、`glob()` ローダーのファイル名はスキーマの外）は、YAML とファイル名を直接読むユニットテスト（`src/content/content.test.ts`）で確かめる。`file()` ローダーは id が重複しても警告を出して後のデータで上書きするだけなので、このテストが必要
 - 表示順は、データから決まる規則でページで並べ替える（実績は年の降順・`order` の昇順・`id` の昇順、お知らせは日付の降順・`id` の昇順、ツールは `order` の昇順・slug の昇順）。`getCollection` が返す順序は保証されないので、それに頼らない
 - 日付: Astro の YAML 読み込みは、クォートしない `2026-10-01` を `Date` 型にする。お知らせの `date` は YAML で必ずクォートし、スキーマは `z.string().regex(/^\d{4}-\d{2}-\d{2}$/)` にする（クォートし忘れるとビルドが失敗するので気付ける）
 
@@ -133,9 +134,9 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 |---|---|
 | リポジトリ | GitHub の公開（public）リポジトリにする。GitHub Free で GitHub Pages を無料で使うため。個人情報は `tmp/` に置き、コミットしない |
 | ホスティング | GitHub Pages（Settings → Pages の Source を「GitHub Actions」にする） |
-| PR の確認（`ci.yml`） | PR と `main` への push で動く。`jdx/mise-action` で Node.js と pnpm を入れ、`pnpm install --frozen-lockfile`、`pnpm exec playwright install --with-deps chromium` の後、[development-guidelines.md](development-guidelines.md) の「必須チェック」の CI の列を全て実行する。権限は `contents: read` だけ |
+| PR の確認（`ci.yml`） | PR と `main` への push で動く。`jdx/mise-action` で Node.js と pnpm を入れ、`pnpm install --frozen-lockfile`、`pnpm exec playwright install --with-deps chromium` の後、[development-guidelines.md](development-guidelines.md) の「必須チェック」の CI の列を全て実行する。E2E はその前の手順でビルドした `dist/` を配信して行う（ビルドは1回）。同じブランチで新しく push されたら古い実行を取り消す（`concurrency`）。権限は `contents: read` だけ |
 | ブランチの保護 | `main` にルールセットを設定し、`ci.yml` のジョブの成功をマージの必須条件にする。`main` への直接の push は禁止する（公開リポジトリなので GitHub Free で使える）。設定するのは、初期化の PR を `main` にマージした後 |
-| 公開（`deploy.yml`） | `main` への push と手動実行（`workflow_dispatch`）で動く。`build` ジョブ（withastro/action、`node-version: 24`）と、`deploy` ジョブ（`needs: build`、`environment: github-pages`、actions/deploy-pages）の2つに分ける。`concurrency: { group: pages, cancel-in-progress: false }`。権限は `contents: read`・`pages: write`・`id-token: write`。ブランチの保護により、`main` には CI を通った変更しか入らない |
+| 公開（`deploy.yml`） | `main` への push で動いた CI（`ci.yml`）が成功したとき（`workflow_run`）と、手動実行（`workflow_dispatch`）で動く。CI が確かめたコミット（`workflow_run.head_sha`）を公開するので、組み合わせて壊れた `main` は CI で止まり、公開されない。`build` ジョブ（withastro/action、`node-version: 24`）と、`deploy` ジョブ（`needs: build`、`environment: github-pages`、actions/deploy-pages）の2つに分ける。`concurrency: { group: pages, cancel-in-progress: false }`。権限は、ワークフロー全体は `contents: read` だけにし、`pages: write`・`id-token: write` は `deploy` ジョブにだけ付ける。手動実行で `main` 以外を公開しないよう、リポジトリの Settings → Environments → `github-pages` の Deployment branches を `main` に限る |
 | URL | `https://yamadentanaka.github.io/yamaden_site/`（GitHub アカウントは `yamadentanaka`、リポジトリ名は `yamaden_site`）。Astro の `site` を `https://yamadentanaka.github.io`、`base` を `/yamaden_site/`、`trailingSlash` を `"always"`、`build.format` を既定の `"directory"` にする |
 | サイト内のリンク | 全て `src/routing/withBase.ts` の `withBase(path)` で作る。`path` は先頭に `/` を付けない相対パス（例: `withBase("tools/")`。トップページは `withBase("")`）。先頭が `/` のパスを渡したら例外を投げる。`base` が変わっても、サイト内リンクのコードは変えなくて済む |
 | 独自ドメイン（任意） | 使う場合は、リポジトリの Settings → Pages でカスタムドメインを設定し、DNS に CNAME を追加する（Actions で公開するので、`public/CNAME` は置かない）。あわせて、`astro.config.mjs` の `base` を `/`、`site` を独自ドメインのURLに変え、`playwright.config.ts` の URL と [development-guidelines.md](development-guidelines.md) の開発サーバーの URL も変える。メール（MXレコード）には影響しない |
@@ -147,7 +148,7 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 
 | 操作 | 目標 | 測定方法 | 測定環境 |
 |------|---------|---------|---------|
-| 4K画像（3840×2160 の JPEG）の読み込み | 2秒以内（5回の中央値） | 下記の `performance.measure("image-load")` の値を、Chrome のパフォーマンスパネル（または DevTools のコンソールで `performance.getEntriesByName("image-load")`）で5回読み取り、中央値をとる | 開発者のノートPC（Apple Silicon の MacBook）、Chrome 最新版、DevTools のパフォーマンスパネルで「CPU: 4x slowdown」、本番ビルド（`pnpm build && pnpm preview`） |
+| 4K画像（3840×2160 の JPEG）の読み込み | 2秒以内（5回の中央値） | 下記の `performance.measure("image-load")` の値を、Chrome のパフォーマンスパネル（または DevTools のコンソールで `performance.getEntriesByName("image-load")`）で5回読み取り、中央値をとる | 開発者のノートPC（Apple Silicon の MacBook）、Chrome 最新版、DevTools のパフォーマンスパネルで「CPU: 4x slowdown」、本番ビルド（`pnpm build && pnpm preview`。Claude Code などの AI エージェントの中では `pnpm preview --ignore-lock`） |
 | 拡大縮小・移動・頂点のドラッグ | 16.7ms を超えるフレームが全体の5%以下 | 4K画像に10エリア（合計100頂点）を設定し、各操作を5秒ずつ行う間を Chrome のパフォーマンスパネルで記録し、フレームの時間を数える | 同上 |
 | トップページの表示 | Lighthouse の Performance スコア 90以上 | Chrome の Lighthouse（モバイル設定）で、公開前に1回測る | 同上（CPU の設定は Lighthouse の既定） |
 
@@ -257,7 +258,7 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 | Astro、@astrojs/preact | サイト生成 | 正確なバージョンに固定する。マイナーバージョンでも挙動が変わることがあるため、上げるときはビルドと E2E テストで確認する |
 | Preact | UI | 正確なバージョンに固定する。@astrojs/preact が 11 系に対応したら移行を検討する |
 | 開発ツール（Vitest、Playwright、ESLint、Prettier、yaml、@types/node など） | テスト・lint・フォーマット | 正確なバージョンに固定する。フォーマットや lint の結果が勝手に変わらないようにするため |
-| GitHub Actions の Action | CI・デプロイ | メジャーバージョンのタグ（例: `actions/checkout@v7`）で指定する。公式の Action はメジャーバージョンの中で互換性を保つため |
+| GitHub Actions の Action | CI・デプロイ | コミットの SHA で固定し、コメントにバージョンを書く（例: `actions/checkout@3d3c42e…  # v7.0.1`）。タグが付け替えられても、確かめていないコードが書き込み権限付きで動かないようにするため。更新は Dependabot の PR で行う |
 
 - 全ての依存は `package.json` で正確なバージョンに固定し（`^` や `~` を付けない）、`pnpm-lock.yaml` をコミットする
 - 依存の更新は、まとめて1つのPRで行い、必須チェックが全て通ることを確認してからマージする
