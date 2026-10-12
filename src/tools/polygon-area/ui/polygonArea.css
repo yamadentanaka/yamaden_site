@@ -1,0 +1,230 @@
+/* ポリゴンエリア定義ツール。ウィンドウの高さに収める（docs/functional-design.md の「画面構成」） */
+body:has(.pae) {
+  height: 100vh;
+}
+
+body:has(.pae) .site-main {
+  min-height: 0;
+}
+
+body:has(.pae) .site-footer {
+  padding: var(--space-1) var(--space-3);
+}
+
+.pae {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pae-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.pae-toolbar button,
+.pae-areas__delete {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.pae-toolbar button:hover:not(:disabled),
+.pae-areas__delete:hover {
+  border-color: var(--color-accent);
+}
+
+.pae-toolbar button:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pae-toolbar button[aria-expanded="true"] {
+  border-color: var(--color-primary);
+}
+
+.pae-file-input {
+  display: none;
+}
+
+.pae-help {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.pae-help ol {
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+.pae-workspace {
+  flex: 1;
+  display: flex;
+  min-height: 400px;
+}
+
+.pae-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: #2b2f36;
+  overflow: hidden;
+}
+
+.pae-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+}
+
+.pae-canvas--select {
+  cursor: default;
+}
+
+.pae-canvas--draw {
+  cursor: crosshair;
+}
+
+.pae-canvas--pan {
+  cursor: grab;
+}
+
+/* 拡大したときにピクセルの境目が分かるようにする */
+.pae-image {
+  image-rendering: pixelated;
+}
+
+.pae-label {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.pae-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-4);
+  color: #d8dde6;
+  text-align: center;
+  pointer-events: none;
+}
+
+.pae-areas {
+  flex: 0 0 280px;
+  width: 280px;
+  overflow-y: auto;
+  border-left: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+}
+
+.pae-areas__title {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9375rem;
+}
+
+.pae-areas__empty {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.pae-areas__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pae-areas__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pae-areas__item:hover {
+  background: var(--color-surface);
+}
+
+.pae-areas__item--selected {
+  background: #e3ecf7;
+}
+
+.pae-areas__swatch {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.pae-areas__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pae-areas__input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 2px 4px;
+}
+
+.pae-areas__count {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pae-areas__delete {
+  padding: 2px 8px;
+  font-size: 0.75rem;
+}
+
+.pae-status {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  min-height: 2em;
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pae-status__coords {
+  min-width: 10em;
+}
+
+.pae-status__message {
+  flex: 1;
+  color: var(--color-text);
+}
+
+.pae-status__message--error {
+  color: #b42318;
+  font-weight: 700;
+}

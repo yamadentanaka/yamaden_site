@@ -147,7 +147,7 @@ PRD（[product-requirements.md](product-requirements.md)）と機能設計書（
 
 | 操作 | 目標 | 測定方法 | 測定環境 |
 |------|---------|---------|---------|
-| 4K画像（3840×2160 の JPEG）の読み込み | 2秒以内（5回の中央値） | 下記の `performance.measure("image-load")` の値を、Chrome のパフォーマンスパネル（または DevTools のコンソールで `performance.getEntriesByName("image-load")`）で5回読み取り、中央値をとる | 開発者のノートPC（Apple Silicon の MacBook）、Chrome 最新版、DevTools のパフォーマンスパネルで「CPU: 4x slowdown」、本番ビルド（`pnpm build && pnpm preview`） |
+| 4K画像（3840×2160 の JPEG）の読み込み | 2秒以内（5回の中央値） | 下記の `performance.measure("image-load")` の値を、Chrome のパフォーマンスパネル（または DevTools のコンソールで `performance.getEntriesByName("image-load")`）で5回読み取り、中央値をとる | 開発者のノートPC（Apple Silicon の MacBook）、Chrome 最新版、DevTools のパフォーマンスパネルで「CPU: 4x slowdown」、本番ビルド（`pnpm build && pnpm preview`。Claude Code などの AI エージェントの中では `pnpm preview --ignore-lock`） |
 | 拡大縮小・移動・頂点のドラッグ | 16.7ms を超えるフレームが全体の5%以下 | 4K画像に10エリア（合計100頂点）を設定し、各操作を5秒ずつ行う間を Chrome のパフォーマンスパネルで記録し、フレームの時間を数える | 同上 |
 | トップページの表示 | Lighthouse の Performance スコア 90以上 | Chrome の Lighthouse（モバイル設定）で、公開前に1回測る | 同上（CPU の設定は Lighthouse の既定） |
 

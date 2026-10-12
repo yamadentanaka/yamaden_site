@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { PolygonAreaEditor } from "../../tools/polygon-area/ui/PolygonAreaEditor";
+---
+
+<BaseLayout
+  title="ポリゴンエリア定義ツール"
+  description="画像にポリゴンで判定エリアを描き、ピクセル座標のJSONとして保存します。画像は外部に送信しません。"
+>
+  <PolygonAreaEditor client:only="preact" />
+</BaseLayout>

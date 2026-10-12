@@ -26,7 +26,8 @@ yamaden_site/
 │   │   └── content.test.ts           #   id の一意性のテスト
 │   ├── content.config.ts             # コンテンツコレクションの定義とスキーマ
 │   ├── routing/                      # サイト内リンクの作成
-│   │   └── withBase.ts
+│   │   ├── withBase.ts
+│   │   └── withBase.test.ts
 │   ├── styles/                       # サイト全体のCSS
 │   │   └── global.css
 │   └── tools/                        # ツールの実装（1ツール1ディレクトリ）

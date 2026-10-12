@@ -1,0 +1,32 @@
+---
+interface Props {
+  /** 並べ替え済みの実績 */
+  items: readonly {
+    id: string;
+    year: number;
+    title: string;
+    description: string;
+  }[];
+}
+
+const { items } = Astro.props;
+---
+
+{items.length > 0 && (
+  <section class="section" aria-labelledby="achievements-title">
+    <h2 class="section__title" id="achievements-title">
+      実績
+    </h2>
+    <ul class="timeline">
+      {items.map((item) => (
+        <li class="timeline__item">
+          <span class="timeline__when">{item.year}年</span>
+          <div>
+            <p class="timeline__title">{item.title}</p>
+            <p class="timeline__text">{item.description}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

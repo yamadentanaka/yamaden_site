@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content";
+import AchievementList from "../components/AchievementList.astro";
+import NewsList from "../components/NewsList.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+// 並び順は docs/functional-design.md の「トップページ」のとおり（getCollection の順序には頼らない）
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+const achievements = (await getCollection("achievements"))
+  .map((entry) => ({ id: entry.id, ...entry.data }))
+  .sort(
+    (a, b) =>
+      b.year - a.year ||
+      (a.order ?? Number.POSITIVE_INFINITY) -
+        (b.order ?? Number.POSITIVE_INFINITY) ||
+      compareText(a.id, b.id),
+  );
+
+const news = (await getCollection("news"))
+  .map((entry) => ({ id: entry.id, ...entry.data }))
+  .sort((a, b) => compareText(b.date, a.date) || compareText(a.id, b.id));
+---
+
+<BaseLayout description="有限会社山田田中商店のホームページです。AI・DX分野の研究開発を支援しています。">
+  <div class="container">
+    <section class="hero">
+      <h1 class="hero__name">有限会社山田田中商店</h1>
+      <p class="hero__business">
+        顧客企業の研究開発チームに参画し、AI・DX分野の研究開発を支援しています。画像認識、生成AI、レコメンド、データ基盤などを、技術検証から本番運用まで担当します。
+      </p>
+    </section>
+    <NewsList items={news} />
+    <AchievementList items={achievements} />
+  </div>
+</BaseLayout>
