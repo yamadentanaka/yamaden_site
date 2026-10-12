@@ -35,7 +35,7 @@ type PressTarget =
   | { kind: "pan" }
   | { kind: "drawingStart" }
   | { kind: "drawingAdd" }
-  | { kind: "vertex"; areaId: string; index: number }
+  | { kind: "vertex"; areaId: string; index: number; pointCount: number }
   | { kind: "edge" }
   | { kind: "area"; areaId: string }
   | { kind: "background" };
@@ -155,7 +155,12 @@ export function Canvas({
     if (area !== undefined) {
       const vertex = hitVertex(area.points, p, current.viewport);
       if (vertex !== null)
-        return { kind: "vertex", areaId: area.id, index: vertex };
+        return {
+          kind: "vertex",
+          areaId: area.id,
+          index: vertex,
+          pointCount: area.points.length,
+        };
       if (hitEdge(area, p, current.viewport) !== null) return { kind: "edge" };
     }
     const inside = hitArea(current.areas, screenToImage(p, current.viewport));
@@ -189,10 +194,18 @@ export function Canvas({
     if (!press.dragging && isDrag(p.x - press.start.x, p.y - press.start.y))
       press.dragging = true;
     if (!press.dragging) return;
-    if (press.target.kind === "vertex" && current.mode.kind !== "select") {
-      // ドラッグ中にキー操作でモードが変わったら、このドラッグはやめる
-      pressRef.current = null;
-      return;
+    if (press.target.kind === "vertex") {
+      // ドラッグ中にキー操作でモードが変わったか、頂点が増減した（Delete など）ら、このドラッグはやめる。
+      // 番号が詰まった後に同じ番号で動かし続けると、別の頂点が動いてしまうため
+      const target = press.target;
+      const area = current.areas.find((a) => a.id === target.areaId);
+      if (
+        current.mode.kind !== "select" ||
+        area?.points.length !== target.pointCount
+      ) {
+        pressRef.current = null;
+        return;
+      }
     }
     if (press.target.kind === "vertex") {
       dispatch({

@@ -500,6 +500,75 @@ test.describe("ポリゴンエリア定義ツール", () => {
     await expect(name).toHaveText("入口");
   });
 
+  test("一覧で名前をクリックしてエリアを選んだ後も、Delete でエリアを削除できる（r2）", async ({
+    page,
+  }) => {
+    await openTool(page);
+    await openImage(page);
+    await drawArea(
+      page,
+      [
+        [10, 10],
+        [60, 10],
+        [60, 50],
+      ],
+      "enter",
+    );
+    await drawArea(
+      page,
+      [
+        [100, 20],
+        [180, 20],
+        [140, 90],
+      ],
+      "enter",
+    );
+    await nameOf(areaItems(page).first()).click();
+    await page.keyboard.press("Delete");
+    await expect(areaItems(page)).toHaveCount(1);
+    await expect(nameOf(areaItems(page).first())).toHaveText("エリア2");
+    // キーボードで名前を選んでいるときも、Delete で削除できる
+    await nameOf(areaItems(page).first()).focus();
+    await page.keyboard.press("Delete");
+    await expect(areaItems(page)).toHaveCount(0);
+  });
+
+  test("頂点のドラッグ中に Delete を押しても、別の頂点は動かない（r2）", async ({
+    page,
+  }) => {
+    // Given: 4点のエリアを選択した状態
+    await openTool(page);
+    await openImage(page);
+    await drawArea(
+      page,
+      [
+        [20, 20],
+        [80, 20],
+        [80, 80],
+        [20, 80],
+      ],
+      "enter",
+    );
+    // When: 頂点 [80, 20] をドラッグし始め、途中で Delete を押して、さらに動かす
+    const from = await pixelPosition(page, [80, 20]);
+    const mid = await pixelPosition(page, [90, 30]);
+    const to = await pixelPosition(page, [120, 60]);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(mid.x, mid.y, { steps: 5 });
+    await page.keyboard.press("Delete");
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    // Then: ドラッグしていた頂点だけが消え、残りの頂点は元の位置のまま
+    const { text } = await downloadJson(page);
+    const saved = JSON.parse(text) as { areas: { points: number[][] }[] };
+    expect(saved.areas[0]?.points).toEqual([
+      [20, 20],
+      [80, 80],
+      [20, 80],
+    ]);
+  });
+
   test("操作説明を開閉できる", async ({ page }) => {
     await openTool(page);
     const help = page.getByRole("region", { name: "操作説明" });

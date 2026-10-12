@@ -121,11 +121,22 @@ export function AreaList({
                   class="pae-areas__name"
                   title="ダブルクリックか F2 で名前を変更"
                   aria-current={area.id === selectedAreaId ? "true" : undefined}
+                  onClick={(event) => {
+                    // マウスで選んだときはフォーカスを外し、Delete・N・Esc・0 などのツールのキーを効かせる
+                    if (event.detail > 0) event.currentTarget.blur();
+                  }}
                   onDblClick={() => startEditing(area)}
                   onKeyDown={(event) => {
+                    // キーボードで名前を選んでいるときは、F2 で名前の変更、Delete・Backspace でエリアの削除
                     if (event.key === "F2") {
                       event.preventDefault();
                       startEditing(area);
+                    } else if (
+                      event.key === "Delete" ||
+                      event.key === "Backspace"
+                    ) {
+                      event.preventDefault();
+                      dispatch({ type: "deleteArea", areaId: area.id });
                     }
                   }}
                 >
