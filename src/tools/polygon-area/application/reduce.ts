@@ -149,6 +149,8 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       return { ...base, selection: action.selection };
 
     case "moveVertex": {
+      // 頂点の編集は select のときだけ（ドラッグ中のキー操作でモードが変わった後の操作を捨てる）
+      if (base.mode.kind !== "select") return base;
       const area = findArea(base, action.areaId);
       if (
         area === undefined ||
@@ -172,6 +174,8 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
     }
 
     case "insertVertex": {
+      // 頂点の編集は select のときだけ（ドラッグ中のキー操作でモードが変わった後の操作を捨てる）
+      if (base.mode.kind !== "select") return base;
       const area = findArea(base, action.areaId);
       if (
         area === undefined ||
@@ -194,6 +198,8 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
     }
 
     case "deleteVertex": {
+      // 頂点の編集は select のときだけ（ドラッグ中のキー操作でモードが変わった後の操作を捨てる）
+      if (base.mode.kind !== "select") return base;
       const area = findArea(base, action.areaId);
       if (
         area === undefined ||
@@ -204,16 +210,22 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       if (area.points.length <= MIN_AREA_POINTS)
         return withError(base, { kind: "minimumPointsRequired" });
       const selection = base.selection;
-      const wasSelected =
-        selection.kind === "vertex" &&
-        selection.areaId === action.areaId &&
-        selection.index === action.index;
+      const sameArea =
+        selection.kind === "vertex" && selection.areaId === action.areaId;
+      // 選択中の頂点を消したら選択を解除し、それより前の頂点を消したら番号を詰める
+      const nextSelection: Selection = !sameArea
+        ? selection
+        : selection.index === action.index
+          ? { kind: "none" }
+          : selection.index > action.index
+            ? { ...selection, index: selection.index - 1 }
+            : selection;
       return {
         ...updateArea(base, action.areaId, (a) => ({
           ...a,
           points: a.points.filter((_, i) => i !== action.index),
         })),
-        selection: wasSelected ? { kind: "none" } : selection,
+        selection: nextSelection,
       };
     }
 

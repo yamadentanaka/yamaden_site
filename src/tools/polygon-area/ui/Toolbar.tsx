@@ -13,8 +13,12 @@ interface Props {
 }
 
 /** ボタンにフォーカスが残ると Enter や Space でボタンも押されるので、クリックの後に外す */
+/**
+ * マウスで押したボタンにフォーカスが残ると、Enter や Space でボタンも押されるので外す。
+ * キーボードで押したとき（detail が 0）はフォーカスを残し、Tab での移動を妨げない
+ */
 const blurAfter = (action: () => void) => (event: MouseEvent) => {
-  (event.currentTarget as HTMLElement).blur();
+  if (event.detail > 0) (event.currentTarget as HTMLElement).blur();
   action();
 };
 

@@ -42,6 +42,7 @@ yamaden_site/
 │   └── fixtures/                     # テスト用の画像・JSON
 ├── .github/
 │   ├── workflows/                    # GitHub Actions（ci.yml・deploy.yml）
+│   ├── dependabot.yml                # GitHub Actions の更新
 │   ├── agents/  prompts/  skills/    # GitHub Copilot 用の設定（.claude/ と対になる）
 │   └── copilot-instructions.md
 ├── .claude/                          # Claude Code の設定
@@ -101,8 +102,8 @@ yamaden_site/
 ### src/routing/
 
 - **役割**: サイト内リンクの作成（`withBase`）。`base` の扱いをここだけに閉じ込める
-- **配置するもの**: `.ts`
-- **依存してよい先**: なし（`import.meta.env.BASE_URL` のみ）
+- **配置するもの**: `.ts` と、そのユニットテスト（`withBase.test.ts`）
+- **依存してよい先**: なし（`import.meta.env.BASE_URL` のみ。テストは `vitest` も使う）
 - **依存禁止**: `src/` の他の全て
 
 ### src/styles/
@@ -128,6 +129,7 @@ yamaden_site/
 src/tools/polygon-area/
 ├── ui/
 │   ├── PolygonAreaEditor.tsx   # ルートコンポーネント（ページから client:only で読み込む）
+│   ├── cursorStore.ts          # カーソル位置（座標表示だけが購読する）
 │   ├── Toolbar.tsx
 │   ├── HelpPanel.tsx
 │   ├── Canvas.tsx
@@ -271,7 +273,7 @@ src/tools/polygon-area/
 
 ## 除外設定
 
-- **.gitignore**: 今入っているのは `.steering/`・`prompt.md`・`tmp/`・`reviews/`。プロジェクトを初期化するときに、次を追記する
+- **.gitignore**: `.steering/`・`prompt.md`・`tmp/`・`reviews/` に加えて、次を入れている（プロジェクトの初期化で追記済み）
   - ビルド成果物: `dist/`、`.astro/`
   - 依存: `node_modules/`
   - テストの出力: `coverage/`、`test-results/`、`playwright-report/`

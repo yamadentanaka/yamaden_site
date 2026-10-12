@@ -1,0 +1,7 @@
+# GitHub Actions の更新（SHA で固定しているので、Dependabot に PR を作らせる）
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

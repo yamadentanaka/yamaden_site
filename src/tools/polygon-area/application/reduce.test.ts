@@ -530,3 +530,91 @@ describe("通知", () => {
     expect(reduce(shown, { type: "startDrawing" }).message).toBeNull();
   });
 });
+
+describe("レビュー指摘への対応（r1）", () => {
+  const square: Point[] = [
+    [0, 0],
+    [10, 0],
+    [10, 10],
+    [0, 10],
+  ];
+
+  it("描画中は頂点の移動・挿入・削除を受け付けない（ドラッグ中に N を押した場合など）", () => {
+    // Given: 頂点を選択した後、描画を始めた
+    const drawing = reduce(
+      {
+        ...loaded([area("a", "A", square)]),
+        selection: { kind: "vertex", areaId: "a", index: 1 },
+      },
+      { type: "startDrawing" },
+    );
+    // When
+    const after = run(
+      drawing,
+      { type: "moveVertex", areaId: "a", index: 1, point: [5, 5] },
+      { type: "insertVertex", areaId: "a", edgeIndex: 0, point: [5, 0] },
+      { type: "deleteVertex", areaId: "a", index: 0 },
+    );
+    // Then: エリアも「描画中は選択なし」も変わらない
+    expect(after.areas[0]?.points).toEqual(square);
+    expect(after.selection).toEqual({ kind: "none" });
+  });
+
+  it("辺 0 に挿入すると、最初の頂点の直後に入る", () => {
+    const after = reduce(loaded([area("a", "A")]), {
+      type: "insertVertex",
+      areaId: "a",
+      edgeIndex: 0,
+      point: [50, 5],
+    });
+    expect(after.areas[0]?.points).toEqual([
+      [10, 10],
+      [50, 5],
+      [100, 10],
+      [10, 100],
+    ]);
+    expect(after.selection).toEqual({ kind: "vertex", areaId: "a", index: 1 });
+  });
+
+  it("選択中の頂点より前の頂点を消すと、選択の番号を詰める", () => {
+    const state = {
+      ...loaded([area("a", "A", square)]),
+      selection: { kind: "vertex", areaId: "a", index: 2 } as const,
+    };
+    const after = reduce(state, {
+      type: "deleteVertex",
+      areaId: "a",
+      index: 0,
+    });
+    expect(after.selection).toEqual({ kind: "vertex", areaId: "a", index: 1 });
+    expect(after.areas[0]?.points[1]).toEqual([10, 10]);
+  });
+
+  it("選択中の頂点より後の頂点を消しても、選択の番号は変えない", () => {
+    const state = {
+      ...loaded([area("a", "A", square)]),
+      selection: { kind: "vertex", areaId: "a", index: 1 } as const,
+    };
+    expect(
+      reduce(state, { type: "deleteVertex", areaId: "a", index: 3 }).selection,
+    ).toEqual({
+      kind: "vertex",
+      areaId: "a",
+      index: 1,
+    });
+  });
+
+  it("直前と同じピクセルの頂点は、表示中の通知も消さずに無視する", () => {
+    const drawing = {
+      ...run(
+        loaded(),
+        { type: "startDrawing" },
+        { type: "addDrawingPoint", point: [1, 2] },
+      ),
+      message: error,
+    };
+    expect(
+      reduce(drawing, { type: "addDrawingPoint", point: [1, 2] }).message,
+    ).toEqual(error);
+  });
+});

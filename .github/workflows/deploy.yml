@@ -1,15 +1,15 @@
-# main への push で GitHub Pages に公開する（docs/architecture.md の「公開」）
+# main への push の CI が成功したら、GitHub Pages に公開する（docs/architecture.md の「公開」）
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -17,19 +17,31 @@ concurrency:
 
 jobs:
   build:
+    # main への push で動いた CI が成功したときだけ（PR の CI では公開しない）
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: withastro/action@v6
+      # Actions はコミットの SHA で固定する（更新は Dependabot に任せる）
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # CI が確かめたコミットを公開する
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: withastro/action@3eafd002e65cc31b4f0eae0bb05450d521562247 # v6.1.3
         with:
           node-version: 24
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # 公開に必要な権限は、このジョブにだけ付ける
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -10,6 +10,19 @@ const text = (min: number, max: number) =>
     return length >= min && length <= max;
   }, `${min}〜${max}文字で書く`);
 
+/** "2026-02-30" や "2026-13-01" のような、実在しない日付を弾く */
+const isRealDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (year === undefined || month === undefined || day === undefined)
+    return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+};
+
 const achievements = defineCollection({
   loader: file("src/content/achievements.yaml"),
   schema: z.object({
@@ -26,7 +39,8 @@ const news = defineCollection({
     // YAML では必ずクォートする（クォートしないと Date 型になり、ここで失敗する）
     date: z
       .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 形式の文字列で書く"),
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 形式の文字列で書く")
+      .refine(isRealDate, "実在する日付を書く"),
     title: text(1, 100),
     body: text(0, 500).optional(),
   }),

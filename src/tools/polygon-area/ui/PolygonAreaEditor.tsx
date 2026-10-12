@@ -2,6 +2,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   useState,
@@ -28,6 +29,7 @@ import { AreaList } from "./AreaList";
 import { Canvas } from "./Canvas";
 import { HelpPanel } from "./HelpPanel";
 import { StatusBar } from "./StatusBar";
+import { createCursorStore } from "./cursorStore";
 import { Toolbar } from "./Toolbar";
 import "./polygonArea.css";
 
@@ -46,13 +48,15 @@ const isFocusedControl = (target: EventTarget | null) =>
 export function PolygonAreaEditor() {
   const [state, dispatch] = useReducer(reduce, initialEditorState);
   const [helpOpen, setHelpOpen] = useState(true);
-  const [cursor, setCursor] = useState<readonly [number, number] | null>(null);
+  const [cursorStore] = useState(createCursorStore);
   const [spaceHeld, setSpaceHeld] = useState(false);
 
   // document のイベントから最新の状態を読むための参照
   const stateRef = useRef(state);
   stateRef.current = state;
   const canvasSizeRef = useRef<Size>({ width: 0, height: 0 });
+  /** ファイルの読み込みの連番。await の後で、より新しい読み込みが始まっていないかを確かめる */
+  const loadSeqRef = useRef(0);
 
   /** 想定外の例外を捕捉して通知にする（状態は例外の前のまま） */
   const reportUnexpected = useCallback((error: unknown) => {
@@ -81,9 +85,20 @@ export function PolygonAreaEditor() {
   const confirmReplace = () =>
     stateRef.current.areas.length === 0 || window.confirm(CONFIRM_REPLACE_TEXT);
 
-  const openImage = async (file: File): Promise<boolean> => {
+  const openImage = async (file: File, seq: number): Promise<boolean> => {
+    const confirmedWithAreas = stateRef.current.areas.length > 0;
     if (!confirmReplace()) return false;
     const result = await loadImageFile(file);
+    // デコード中に別のファイルを開いたときは、古い方を捨てる
+    if (seq !== loadSeqRef.current) {
+      if (result.ok) releaseImageUrl(result.value.url);
+      return false;
+    }
+    // デコード中にエリアを描いたときは、確認し直す
+    if (result.ok && !confirmedWithAreas && !confirmReplace()) {
+      releaseImageUrl(result.value.url);
+      return false;
+    }
     if (!result.ok) {
       dispatch({ type: "showMessage", message: toMessage(result.error) });
       return false;
@@ -98,7 +113,7 @@ export function PolygonAreaEditor() {
     return true;
   };
 
-  const openDefinition = async (file: File): Promise<boolean> => {
+  const openDefinition = async (file: File, seq: number): Promise<boolean> => {
     const image = stateRef.current.image;
     if (image === null) {
       dispatch({
@@ -108,7 +123,12 @@ export function PolygonAreaEditor() {
       return false;
     }
     if (!confirmReplace()) return false;
+    const confirmedWithAreas = stateRef.current.areas.length > 0;
     const text = await readTextFile(file);
+    // 読み込み中に別のファイルを開いたか画像が変わったとき、エリアを描いたのに確認していないときは捨てる
+    if (seq !== loadSeqRef.current || stateRef.current.image !== image)
+      return false;
+    if (!confirmedWithAreas && !confirmReplace()) return false;
     if (!text.ok) {
       dispatch({ type: "showMessage", message: toMessage(text.error) });
       return false;
@@ -135,13 +155,14 @@ export function PolygonAreaEditor() {
   const openFiles = (files: readonly File[]) => {
     const file = files[0];
     if (file === undefined) return;
+    const seq = ++loadSeqRef.current;
     const run = async () => {
       const kind = classifyFile(file);
       const loaded =
         kind === "image"
-          ? await openImage(file)
+          ? await openImage(file, seq)
           : kind === "json"
-            ? await openDefinition(file)
+            ? await openDefinition(file, seq)
             : false;
       if (kind === "unknown") {
         dispatch({
@@ -191,7 +212,7 @@ export function PolygonAreaEditor() {
   }, [state.message]);
 
   // ツールの外にファイルを落としても、ブラウザがそのファイルを開いてページを移らないようにする
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prevent = (event: DragEvent) => event.preventDefault();
     document.addEventListener("dragover", prevent);
     document.addEventListener("drop", prevent);
@@ -201,8 +222,8 @@ export function PolygonAreaEditor() {
     };
   }, []);
 
-  // キーボード操作（docs/functional-design.md の「操作一覧」）
-  useEffect(() => {
+  // キーボード操作（docs/functional-design.md の「操作一覧」）。画面に出る前に登録する
+  useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
         isFocusedControl(event.target) ||
@@ -304,7 +325,7 @@ export function PolygonAreaEditor() {
           spaceHeld={spaceHeld}
           dispatch={safeDispatch}
           onFinishDrawing={finishDrawing}
-          onCursorChange={setCursor}
+          onCursorChange={cursorStore.set}
           onSizeChange={onCanvasSizeChange}
           onUnexpectedError={reportUnexpected}
         />
@@ -317,7 +338,7 @@ export function PolygonAreaEditor() {
         />
       </div>
       <StatusBar
-        cursor={cursor}
+        cursorStore={cursorStore}
         scale={state.viewport.scale}
         message={state.message}
       />

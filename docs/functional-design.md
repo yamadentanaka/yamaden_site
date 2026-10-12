@@ -44,6 +44,7 @@ graph TB
 
 ```typescript
 /** 実績。src/content/achievements.yaml に配列で書く */
+// 型は src/content.config.ts のスキーマから決まる（Astro の CollectionEntry<"achievements">）。下の名前は文書での呼び名
 interface Achievement {
   id: string;          // 必須。小文字英数字とハイフンのみ（例: "jsai2024-demo"）。全実績で一意
   year: number;        // 必須。西暦4桁の整数（例: 2024）
@@ -241,7 +242,7 @@ erDiagram
 |---|---|---|
 | `AchievementList` | `{ items: readonly Achievement[] }`（並べ替え済み） | 見出し「実績」と、年・タイトル・説明の一覧。0件なら見出しも含めて何も出力しない |
 | `NewsList` | `{ items: readonly News[] }`（並べ替え済み） | 見出し「お知らせ」と、日付（`YYYY.MM.DD`）・タイトル・本文（ある場合）の一覧。0件なら見出しも含めて何も出力しない |
-| `ToolCard` | `{ tool: ToolInfo }` | ツール名と説明。カード全体が `withBase(\`tools/${tool.slug}/\`)` へのリンク |
+| `ToolCard` | `{ tool: { slug, name, description } }`（`ToolInfo` の一部） | ツール名と説明。カード全体が `withBase(\`tools/${tool.slug}/\`)` へのリンク |
 
 - 部品はコンテンツコレクションを直接読まず、ページから渡されたデータを表示するだけにする
 - `.astro` ファイルでは `style` 属性と `define:vars` を使わず、クラスと CSS ファイルで見た目を書く（CSP で止められるため）
@@ -314,7 +315,8 @@ type EditorAction =
   - `addDrawingPoint`: 直前の頂点と同じピクセルなら、状態を変えない（通知も出さず、表示中の通知も消さない。下の「通知を消す規則」の例外）
   - `finishDrawing`: 3点以上なら、既定の名前と表示色でエリアを追加し、そのエリアを選択して `select` に戻る。2点以下なら確定せず、エラーの通知を出す
   - `insertVertex`: 頂点を挿入し、挿入した頂点を選択する
-  - `deleteVertex`・`deleteArea`: 削除した対象が選択中なら、選択を `none` にする
+  - `moveVertex`・`insertVertex`・`deleteVertex`: `select` のときだけ受け付ける（頂点のドラッグ中にキーでモードが変わった後の操作は捨てる）
+  - `deleteVertex`・`deleteArea`: 削除した対象が選択中なら、選択を `none` にする。同じエリアで、選択中の頂点より前の頂点を消したときは、選択の番号を1つ詰める
   - `renameArea`: 名前の規則を満たさないときは名前を変えず、`message` にエラーを入れる
 - **通知を消す規則**: `zoom`・`pan`・`moveVertex`・`showMessage`・`dismissMessage` 以外の操作を受け取ったら、`message` を `null` にする（その操作自身がエラーを出す場合は、新しいエラーに置き換わる）。5秒後に消すタイマーは `PolygonAreaEditor` が持ち、通知が変わるたびに作り直して、5秒たったら `dismissMessage` を送る
 - **依存先**: ドメインレイヤー
@@ -332,17 +334,22 @@ function clampToImage(p: ImagePoint, image: ImageInfo): Point;   // 画像の端
 function zoomAt(viewport: Viewport, factor: number, anchor: ScreenPoint): Viewport;
 function wheelZoomFactor(deltaY: number, deltaMode: number): number;
 function fitViewport(image: ImageInfo, viewportSize: Size): Viewport;
+function clampScale(scale: number): number;                          // 0.05〜32 に収める
+function pixelCenterToScreen(point: Point, viewport: Viewport): ScreenPoint; // 頂点を描く位置（ピクセルの中心）
 
 // 当たり判定（domain/hitTest.ts）。距離は画面px で判定する
 function hitVertex(points: readonly Point[], p: ScreenPoint, viewport: Viewport): number | null; // 頂点の番号。選択中のエリアの頂点と、描画中の頂点（始点の判定）の両方に使う
 function hitEdge(area: Area, p: ScreenPoint, viewport: Viewport): number | null;   // 辺の番号
 function hitArea(areas: readonly Area[], p: ImagePoint): string | null;           // エリアの id。内外判定
+function isInsidePolygon(points: readonly Point[], p: ImagePoint): boolean;       // 偶奇規則
+function isDrag(dx: number, dy: number): boolean;                                 // 4画面px 以上でドラッグ
 
 // エリアの規則（domain/area.ts）
 function normalizeAreaName(name: string): string; // 前後の空白を除く
 function validateAreaName(name: string, areas: readonly Area[], selfId?: string): Result<string, AreaNameError>; // 正規化した名前を返す
 function nextDefaultName(areas: readonly Area[]): string;
 function nextColorIndex(areas: readonly Area[]): number;
+function areaColor(colorIndex: number): string; // パレットの色
 
 // JSON変換（domain/definitionFile.ts）
 function serialize(image: ImageInfo, areas: readonly Area[]): string; // 出力する項目だけで新しいオブジェクトを作る（url・id・colorIndex は出力しない）
@@ -510,7 +517,7 @@ sequenceDiagram
   1. 画像を開く: [画像を開く] を押すか、画像をドラッグ&ドロップ
   2. エリアを描く: [エリアを追加]（N）→ 画像をクリックして頂点を置く → 始点をクリックか Enter で確定。Backspace で1つ戻す、Esc で中止
   3. 編集する: エリアをクリックして選択 → 頂点をドラッグで移動、辺をダブルクリックで頂点を追加、頂点を選んで Delete で削除。エリアを選んで Delete、またはエリア一覧の [削除] でエリアを削除。Esc で選択を解除
-  4. 名前を変える: エリア一覧の名前をダブルクリック
+  4. 名前を変える: エリア一覧の名前をダブルクリック（またはキーボードで名前を選んで F2）
   5. 拡大・移動: ホイールで拡大縮小、背景をドラッグか Space + ドラッグで移動、0 で全体表示
   6. 保存・再開: [JSONをダウンロード] で保存、画像を開いてから [JSONを開く] で再開
 
@@ -551,7 +558,7 @@ stateDiagram-v2
 
 | 操作 | 状態 | 動作 |
 |---|---|---|
-| 「画像を開く」/ 画像をドロップ | 全て | 画像を読み込む。既にエリアがある場合は、確認ダイアログ「エリアは全て消えます。よろしいですか？」でOKのときだけ読み込む |
+| 「画像を開く」/ 画像をドロップ | 全て | 画像を読み込む。既にエリアがある場合は、確認ダイアログ「エリアは全て消えます。よろしいですか？」でOKのときだけ読み込む。デコード中にエリアを描いた場合は、デコードの後で確認し直す。デコード中に別のファイルを開いた場合は、古い方を捨てる（ローカルURLも解放する） |
 | 「JSONを開く」/ JSONをドロップ | `select`, `drawing` | JSONを読み込み、エリアを置き換える。既にエリアがある場合は、画像と同じ確認ダイアログを出す |
 | 「エリアを追加」/ Nキー | `select` | `drawing` に移る |
 | 左クリック（始点以外） | `drawing` | クリック位置に頂点を追加する（画像の外なら画像の端に寄せる）。直前の頂点と同じピクセルなら追加しない |
@@ -570,7 +577,8 @@ stateDiagram-v2
 | Delete / Backspace | `select`（頂点を選択中） | 頂点を削除する。3点のエリアでは削除せず、エラーの通知を出す |
 | Delete / Backspace | `select`（エリアを選択中） | エリアを削除する |
 | Esc | `select` | 選択を解除する |
-| エリア一覧の行をクリック | `select` | そのエリアを選択する |
+| エリア一覧の行をクリック / 名前のボタンで Enter・Space | `select` | そのエリアを選択する（名前はキーボードで選べるボタンにする。選択中は `aria-current`） |
+| エリア一覧の名前のボタンで F2 | `select` | そのエリアを選択し、名前を編集する（ダブルクリックと同じ） |
 | エリア一覧の名前をダブルクリック | `select` | そのエリアを選択し、名前を編集する。Enter で確定する。エラーのときは、入力欄を開いたまま入力値を残し、エラーの通知を出す。フォーカスを外したとき（キャンバスを押したときを含む）も確定するが、エラーのときは元の名前に戻して閉じ、エラーの通知を出す。Esc で元の名前に戻して閉じる。IME の変換を確定・取り消す Enter・Esc（`isComposing`）では、確定も取り消しもしない |
 | エリア一覧の「削除」 | `select`, `drawing` | エリアを削除する（`drawing` 中は描画を続ける） |
 | マウスホイール | `select`, `drawing` | カーソル位置を中心に拡大・縮小する |
@@ -578,8 +586,8 @@ stateDiagram-v2
 | 「全体表示」/ 0キー | `select`, `drawing` | 画像全体が収まる拡大率に戻す |
 | 「JSONをダウンロード」 | `select` | JSONを保存する。エリアが0件でも保存できる |
 
-- キーは `document` の `keydown` で受け取る。`input`・`textarea`・`button`・`a` にフォーカスがあるとき（エリア名の編集中、キーボードでボタンを選んでいるときなど）は無視する。ツールの操作に使った Enter・Space・Backspace・Delete は `preventDefault` する（Space でのページのスクロールなどを防ぐ）
-- ツールバーのボタンは、クリックした後にフォーカスを外す（ボタンにフォーカスが残ると、Enter や Space でボタンも押されるため）
+- キーは `document` の `keydown` で受け取る。`input`・`textarea`・`button`・`a` にフォーカスがあるとき（エリア名の編集中、キーボードでボタンを選んでいるときなど）と、`Ctrl`・`Alt`・`Meta`（⌘）を押しているとき（`Ctrl` + `0` などのブラウザの操作を妨げないため）は無視する。ツールの操作に使った Enter・Space・Backspace・Delete は `preventDefault` する（Space でのページのスクロールなどを防ぐ）
+- ツールバーとエリア一覧の削除のボタンは、マウスで押した後にフォーカスを外す（ボタンにフォーカスが残ると、Enter や Space でボタンも押されるため）。キーボードで押したとき（`detail` が 0）はフォーカスを残し、Tab での移動を妨げない
 - ホイールは、キャンバスに `{ passive: false }` で登録し、常に `preventDefault` する（ページのスクロールと、ピンチでのページ全体のズームを防ぐ）
 - ダブルクリックは `dblclick` イベントで判定する。1回目のクリックは「左クリック（選択中のエリアの辺）」として扱われ、選択は変わらない。選択していないエリアの辺のすぐ内側をダブルクリックしたときは、1回目のクリックでそのエリアが選ばれ、ダブルクリックで頂点が入る（これでよいものとする）
 - キャンバスを押したときは、入力欄などからフォーカスを外す（ポインターの既定の動作を止めているため、自分で外す）
@@ -589,6 +597,7 @@ stateDiagram-v2
 
 ### 表示項目
 
+- **画像**: 拡大率が 1 以上のときはピクセルの境目が分かるように表示し（`image-rendering: pixelated`）、1 未満のときは滑らかに縮小する
 - **座標表示**: カーソルが画像上にあるとき `x: 1203, y: 455`（`toPixel` の結果）。画像の外では `x: -, y: -`
 - **拡大率**: `scale × 100` を四捨五入して整数にし、`%` で表示する
 - **エリア**: 塗りは表示色の不透明度 25%、輪郭は表示色の幅 2画面px。選択中のエリアは輪郭を幅 3画面px にし、頂点ハンドルを表示する

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -41,5 +41,23 @@ describe.each(["achievements.yaml", "news.yaml"])("%s", (fileName) => {
     const ids = idsOf(await readEntries(fileName));
     // Then
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("tools/", () => {
+  it("ツール情報のファイル名（slug）が小文字英数字とハイフンだけで、shared ではない", async () => {
+    // Given
+    const files = (await readdir(join(contentDir, "tools"))).filter((name) =>
+      name.endsWith(".yaml"),
+    );
+    // Then
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const slug = file.replace(/\.yaml$/, "");
+      expect(
+        /^[a-z0-9-]+$/.test(slug) && slug !== "shared",
+        `slug: ${slug}`,
+      ).toBe(true);
+    }
   });
 });

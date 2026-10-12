@@ -1,5 +1,5 @@
 // 画像とエリアの表示（SVG）と、ポインター・ホイールの操作（docs/functional-design.md の「操作一覧」「表示項目」）
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { EditorAction, EditorState } from "../application/editorState";
 import { selectedAreaId } from "../application/editorState";
 import { areaColor, nextColorIndex } from "../domain/area";
@@ -96,8 +96,9 @@ export function Canvas({
     );
   };
 
-  // キャンバスの大きさを親に伝える（全体表示の計算に使う）
-  useEffect(() => {
+  // キャンバスの大きさを親に伝える（全体表示の計算に使う）。
+  // 画面に出る前に測り、ページを開いた直後に画像を読み込んでも大きさ 0 で全体表示しないようにする
+  useLayoutEffect(() => {
     const svg = svgRef.current;
     if (svg === null) return;
     const report = () =>
@@ -109,7 +110,7 @@ export function Canvas({
   }, [onSizeChange]);
 
   // ホイールは passive: false で登録し、ページのスクロールとピンチでのページのズームを止める
-  useEffect(() => {
+  useLayoutEffect(() => {
     const svg = svgRef.current;
     if (svg === null) return;
     const onWheel = guard((event: WheelEvent) => {
@@ -188,6 +189,11 @@ export function Canvas({
     if (!press.dragging && isDrag(p.x - press.start.x, p.y - press.start.y))
       press.dragging = true;
     if (!press.dragging) return;
+    if (press.target.kind === "vertex" && current.mode.kind !== "select") {
+      // ドラッグ中にキー操作でモードが変わったら、このドラッグはやめる
+      pressRef.current = null;
+      return;
+    }
     if (press.target.kind === "vertex") {
       dispatch({
         type: "moveVertex",
@@ -374,7 +380,9 @@ export function Canvas({
             transform={`translate(${viewport.offsetX} ${viewport.offsetY}) scale(${scale})`}
           >
             <image
-              class="pae-image"
+              class={
+                scale >= 1 ? "pae-image pae-image--pixelated" : "pae-image"
+              }
               href={image.url}
               x={0}
               y={0}

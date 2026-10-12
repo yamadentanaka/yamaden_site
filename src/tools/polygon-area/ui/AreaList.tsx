@@ -115,13 +115,22 @@ export function AreaList({
                   }}
                 />
               ) : (
-                <span
+                // キーボードでも操作できるようにボタンにする（Enter・Space で選択、F2 で名前の変更）
+                <button
+                  type="button"
                   class="pae-areas__name"
-                  title="ダブルクリックで名前を変更"
+                  title="ダブルクリックか F2 で名前を変更"
+                  aria-current={area.id === selectedAreaId ? "true" : undefined}
                   onDblClick={() => startEditing(area)}
+                  onKeyDown={(event) => {
+                    if (event.key === "F2") {
+                      event.preventDefault();
+                      startEditing(area);
+                    }
+                  }}
                 >
                   {area.name}
-                </span>
+                </button>
               )}
               <span class="pae-areas__count">{area.points.length}点</span>
               <button
@@ -130,7 +139,8 @@ export function AreaList({
                 aria-label={`${area.name}を削除`}
                 onClick={(event) => {
                   event.stopPropagation();
-                  (event.currentTarget as HTMLElement).blur();
+                  if (event.detail > 0)
+                    (event.currentTarget as HTMLElement).blur();
                   dispatch({ type: "deleteArea", areaId: area.id });
                 }}
               >

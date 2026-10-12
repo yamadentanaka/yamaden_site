@@ -15,7 +15,6 @@ const areaItems = (page: Page) => page.locator(".pae-areas__item");
 
 async function openTool(page: Page) {
   await page.goto("./tools/polygon-area/");
-  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("button", { name: "画像を開く" })).toBeVisible();
 }
 
@@ -142,6 +141,8 @@ test.describe("ポリゴンエリア定義ツール", () => {
   }) => {
     // Given: ページの読み込みが終わってから監視を始める
     await openTool(page);
+    // 遅れて取得されるリソースがないことを前提に、ページの通信が落ち着いてから監視する（docs/architecture.md）
+    await page.waitForLoadState("networkidle");
     const requests: string[] = [];
     page.on("request", (request) => {
       const url = request.url();
@@ -402,15 +403,101 @@ test.describe("ポリゴンエリア定義ツール", () => {
       ],
       "enter",
     );
+    let dialogMessage = "";
     page.once("dialog", (dialog) => {
-      expect(dialog.message()).toBe("エリアは全て消えます。よろしいですか？");
+      dialogMessage = dialog.message();
       void dialog.dismiss();
     });
     await imageInput(page).setInputFiles(IMAGE);
+    await expect
+      .poll(() => dialogMessage)
+      .toBe("エリアは全て消えます。よろしいですか？");
     await expect(areaItems(page)).toHaveCount(1);
     page.once("dialog", (dialog) => void dialog.accept());
     await imageInput(page).setInputFiles(IMAGE);
     await expect(areaItems(page)).toHaveCount(0);
+  });
+
+  test("画像をドラッグ&ドロップで読み込める", async ({ page }) => {
+    await openTool(page);
+    const base64 = (await readFile(IMAGE)).toString("base64");
+    const dataTransfer = await page.evaluateHandle((data) => {
+      const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+      const transfer = new DataTransfer();
+      transfer.items.add(
+        new File([bytes], "pattern-200x100.png", { type: "image/png" }),
+      );
+      return transfer;
+    }, base64);
+    await page.locator(".pae").dispatchEvent("drop", { dataTransfer });
+    await expect(page.locator(".pae-image")).toBeVisible();
+  });
+
+  test("Space + ドラッグと中ボタンのドラッグで表示位置を移動し、0 キーで全体表示に戻す", async ({
+    page,
+  }) => {
+    // Given
+    await openTool(page);
+    await openImage(page);
+    const imageBox = async () => {
+      const box = await page.locator(".pae-image").boundingBox();
+      if (box === null) throw new Error("画像が表示されていない");
+      return box;
+    };
+    const start = await imageBox();
+    const from = await pixelPosition(page, [100, 50]);
+    // When: Space + 左ドラッグで右へ 40px
+    await page.mouse.move(from.x, from.y);
+    await page.keyboard.down(" ");
+    await page.mouse.down();
+    await page.mouse.move(from.x + 40, from.y, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.up(" ");
+    // Then
+    await expect
+      .poll(async () => (await imageBox()).x - start.x)
+      .toBeCloseTo(40, 0);
+    // When: 中ボタンのドラッグで下へ 30px
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down({ button: "middle" });
+    await page.mouse.move(from.x, from.y + 30, { steps: 5 });
+    await page.mouse.up({ button: "middle" });
+    // Then
+    await expect
+      .poll(async () => (await imageBox()).y - start.y)
+      .toBeCloseTo(30, 0);
+    // When: 拡大してから 0 キー
+    await page.mouse.wheel(0, -200);
+    await page.keyboard.press("0");
+    // Then: 読み込んだ直後と同じ位置と大きさに戻る
+    await expect.poll(async () => (await imageBox()).x).toBeCloseTo(start.x, 0);
+    expect((await imageBox()).width).toBeCloseTo(start.width, 0);
+  });
+
+  test("エリア一覧の名前はキーボードで選択でき、F2 で名前を変えられる", async ({
+    page,
+  }) => {
+    await openTool(page);
+    await openImage(page);
+    await drawArea(
+      page,
+      [
+        [10, 10],
+        [60, 10],
+        [60, 50],
+      ],
+      "enter",
+    );
+    await page.keyboard.press("Escape");
+    const name = nameOf(areaItems(page).first());
+    await name.focus();
+    await page.keyboard.press("Enter");
+    await expect(name).toHaveAttribute("aria-current", "true");
+    await page.keyboard.press("F2");
+    const input = page.getByLabel("エリア名");
+    await input.fill("入口");
+    await input.press("Enter");
+    await expect(name).toHaveText("入口");
   });
 
   test("操作説明を開閉できる", async ({ page }) => {

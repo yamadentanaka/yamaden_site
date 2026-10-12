@@ -438,3 +438,63 @@ describe("checkCompatibility", () => {
     });
   });
 });
+
+describe("parse・checkCompatibility の境界（r1）", () => {
+  it("エリア名がちょうど50文字なら通る", () => {
+    const name = "あ".repeat(50);
+    const result = parse(
+      validJson({
+        areas: [
+          {
+            name,
+            points: [
+              [0, 0],
+              [1, 0],
+              [0, 1],
+            ],
+          },
+        ],
+      }),
+    );
+    expect(result.ok && result.value.areas[0]?.name).toBe(name);
+  });
+
+  it("image は name → width → height の順に確かめる", () => {
+    expect(
+      parse(validJson({ image: { name: "", width: 0, height: 0 } })),
+    ).toEqual({
+      ok: false,
+      error: { kind: "invalidField", path: "image.name" },
+    });
+    expect(
+      parse(validJson({ image: { name: "a", width: 0, height: 0 } })),
+    ).toEqual({
+      ok: false,
+      error: { kind: "invalidField", path: "image.width" },
+    });
+  });
+
+  it("y が範囲外なら pointOutOfRange。height - 1 は範囲内", () => {
+    const file = (y: number) =>
+      ({
+        version: 1,
+        image: { name: "x", width: 1920, height: 1080 },
+        areas: [
+          {
+            name: "A",
+            points: [
+              [0, 0],
+              [1, 0],
+              [0, y],
+            ],
+          },
+        ],
+      }) as const;
+    expect(checkCompatibility(file(1079), image).ok).toBe(true);
+    expect(checkCompatibility(file(1080), image)).toEqual({
+      ok: false,
+      error: { kind: "pointOutOfRange", path: "areas[0].points[2]" },
+    });
+    expect(checkCompatibility(file(-1), image).ok).toBe(false);
+  });
+});
