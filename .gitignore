@@ -29,3 +29,6 @@ mise.local.toml
 
 # OS
 .DS_Store
+
+# /add-feature の実行中マーカー（.steering/ に含まれるが、コミットされると24時間で無視する保護が効かないため明示する）
+.steering/.active

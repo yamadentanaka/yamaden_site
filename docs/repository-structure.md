@@ -280,6 +280,7 @@ src/tools/polygon-area/
   - 環境変数: `.env`、`.env.*`
   - 個人の設定: `.claude/settings.local.json`、`mise.local.toml`
   - OS: `.DS_Store`
+  - `/add-feature` の実行中マーカー: `.steering/.active`（`.steering/` に含まれるが、コミットされると24時間で無視する保護が効かないため明示する）
 - **ESLint**: flat config は `.gitignore` を読まないので、`eslint.config.js` の `globalIgnores` に `dist/`・`.astro/`・`coverage/`・`test-results/`・`playwright-report/`・`tmp/`・`.steering/`・`reviews/` を入れる
 - **Prettier**: `.prettierignore` に、Prettier で整形しないものを書く（内容は [development-guidelines.md](development-guidelines.md)）
 - **Vitest**: `include` を `src/**/*.test.ts` に限る（`tests/e2e/*.spec.ts` を拾わないようにする）
