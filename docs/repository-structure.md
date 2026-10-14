@@ -52,7 +52,7 @@ yamaden_site/
 │   └── ideas/                        #   壁打ち・技術調査のメモ
 ├── .steering/                        # 作業単位の計画（git 管理外）
 ├── tmp/                              # 個人の作業用ファイル（git 管理外）
-├── reviews/                          # pr-fix-push のレビュー対応レポート（git 管理外）
+├── reviews/                          # pr-fix-push の対応レポートと pr-review-loop の記録（git 管理外）
 ├── AGENTS.md                         # AI エージェント向けの指示（GitHub Copilot など）
 ├── CLAUDE.md                         # Claude Code 向けの指示
 ├── prompt.md                         # 個人のメモ（git 管理外）
@@ -273,7 +273,7 @@ src/tools/polygon-area/
 
 ## 除外設定
 
-- **.gitignore**: `.steering/`・`prompt.md`・`tmp/`・`reviews/` に加えて、次を入れている（プロジェクトの初期化で追記済み）
+- **.gitignore**: `.steering/`・`prompt.md`・`tmp/`・`reviews/` に加えて、次を入れている（プロジェクトの初期化と `.claude` の更新で追記）
   - ビルド成果物: `dist/`、`.astro/`
   - 依存: `node_modules/`
   - テストの出力: `coverage/`、`test-results/`、`playwright-report/`
