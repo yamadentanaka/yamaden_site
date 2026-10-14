@@ -52,7 +52,7 @@ yamaden_site/
 │   └── ideas/                        #   壁打ち・技術調査のメモ
 ├── .steering/                        # 作業単位の計画（git 管理外）
 ├── tmp/                              # 個人の作業用ファイル（git 管理外）
-├── reviews/                          # pr-fix-push のレビュー対応レポート（git 管理外）
+├── reviews/                          # pr-fix-push の対応レポートと pr-review-loop の記録（git 管理外）
 ├── AGENTS.md                         # AI エージェント向けの指示（GitHub Copilot など）
 ├── CLAUDE.md                         # Claude Code 向けの指示
 ├── prompt.md                         # 個人のメモ（git 管理外）
@@ -273,13 +273,14 @@ src/tools/polygon-area/
 
 ## 除外設定
 
-- **.gitignore**: `.steering/`・`prompt.md`・`tmp/`・`reviews/` に加えて、次を入れている（プロジェクトの初期化で追記済み）
+- **.gitignore**: `.steering/`・`prompt.md`・`tmp/`・`reviews/` に加えて、次を入れている（プロジェクトの初期化と `.claude` の更新で追記）
   - ビルド成果物: `dist/`、`.astro/`
   - 依存: `node_modules/`
   - テストの出力: `coverage/`、`test-results/`、`playwright-report/`
   - 環境変数: `.env`、`.env.*`
   - 個人の設定: `.claude/settings.local.json`、`mise.local.toml`
   - OS: `.DS_Store`
+  - `/add-feature` の実行中マーカー: `.steering/.active`（`.steering/` に含まれるが、コミットされると24時間で無視する保護が効かないため明示する）
 - **ESLint**: flat config は `.gitignore` を読まないので、`eslint.config.js` の `globalIgnores` に `dist/`・`.astro/`・`coverage/`・`test-results/`・`playwright-report/`・`tmp/`・`.steering/`・`reviews/` を入れる
 - **Prettier**: `.prettierignore` に、Prettier で整形しないものを書く（内容は [development-guidelines.md](development-guidelines.md)）
 - **Vitest**: `include` を `src/**/*.test.ts` に限る（`tests/e2e/*.spec.ts` を拾わないようにする）
